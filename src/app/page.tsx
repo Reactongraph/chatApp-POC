@@ -52,22 +52,24 @@ const Home = () => {
 
   return (
     <div>
-      <div className="page home">
-        <div>
-          {/* Input field for user ID */}
+      <div className="page home ml-2">
+        <div className='my-5'>
+         
           <label>
             User ID:
-            <input className="border-2" type="text" value={userId} onChange={handleInputChange} />
+            <input className="border-2 rounded-xl" type="text" value={userId} onChange={handleInputChange} />
           </label>
-          {/* Button to trigger user search */}
-          <button onClick={handleSearchClick} className='bg-black text-white'>Search</button>
+         
+          <button onClick={handleSearchClick} className='bg-black w-20 rounded-[4px] text-white'>Search</button>
         </div>
         <h2>Users available for chat</h2>
         {fetchError && <p>{fetchError}</p>}
         {users && (
-          <div className="users flex flex-col">
+          <div className="users flex flex-col cursor-pointer gap-y-2">
             {users.map((user) => (
+              <div className="flex h-8 w-20 flex-shrink-0 items-center justify-center rounded-[4px] bg-green-200 ml-2">
               <button style={{all:"unset"}} key={user.id} onClick={()=>{handleChat(user.id)}}>{user.Users}</button>
+              </div>
             ))}
           </div>
         )}

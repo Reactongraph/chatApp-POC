@@ -51,9 +51,13 @@ const fetchMessages = async () => {
   const handleSubscription = (event: RealtimeEvent) => {
     // Check if the new message already exists in the messages state
   const isNewMessageExist = messages.some((msg) => msg.id === event.new.id);
-   
+    // Check if the new message is intended for the current receiver
+    const isMessageForReceiver = (
+      (event.new.senderId === userIdRef.current && event.new.receiverId === receiverId) ||
+      (event.new.senderId === receiverId && event.new.receiverId === userIdRef.current)
+    );
   // If the new message doesn't exist, add it to the messages state
-  if (!isNewMessageExist ) {
+  if (!isNewMessageExist  && isMessageForReceiver) {
     setMessages((prevMessages) => [...prevMessages, event.new]);
   }
   };
@@ -95,10 +99,11 @@ const fetchMessages = async () => {
           {/* Display messages */}
           <div>
             {messages.map((msg) => (
-              <div key={msg.id}>
+              <div key={msg.id}
+               className={`${msg.senderId === userIdRef.current ? 'text-right' : 'text-left'} w-[15rem]`}
+              >
                 <p>{msg.senderId === userIdRef.current ? `You: ${userIdRef.current} ` : `User ${msg.senderId}: `}{msg.content}</p>
-                {/* You can display additional information like timestamp, etc. */}
-              </div>
+                </div>
             ))}
           </div>
 
@@ -123,5 +128,4 @@ const fetchMessages = async () => {
 };
 
 export default ChatPage;
-
 
