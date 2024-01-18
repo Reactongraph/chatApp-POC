@@ -46,7 +46,7 @@ const Home = () => {
     }
   }
  
-  const  handleChat = (id: any) => {
+  const handleChat = (id: any) => {
   router.push(`/chatPage/${id}`)
  }
 

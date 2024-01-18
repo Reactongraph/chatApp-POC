@@ -1,12 +1,12 @@
 "use client"
-import React, { useEffect, useState, useRef} from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import supabase from '../../../config/supabaseClient';
 
 interface RealtimeEvent {
   table: string;
   type: string;
   new: any; // Adjust the type based on the actual structure of the 'new' property
-} 
+}
 
 interface ChatPageProps {
   params: {
@@ -15,60 +15,90 @@ interface ChatPageProps {
 }
 
 const ChatPage: React.FC<ChatPageProps> = ({ params }) => {
-  // const [userId, setUserId] = useState<number | undefined>();
   const receiverId = parseInt(params.id);
-  const [fetchError, setFetchError] = useState<string | null>(null);;
-  const [messages, setMessages] =  useState<any[]>([]);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [messages, setMessages] = useState<any[]>([]);
   const [message, setMessage] = useState('');
   const userIdRef = useRef<number | null>(null);
 
-const fetchMessages = async () => {
-         if (typeof window !== 'undefined' && window.localStorage) {
-      let storedUserId = localStorage.getItem("senderId");
+  const fetchMessages = async () => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      let storedUserId = localStorage.getItem('senderId');
 
-      // Check if storedUserId is not null or undefined before parsing
-      if (storedUserId !== null && storedUserId !== undefined) {
-         userIdRef.current = parseInt(storedUserId, 10);
-        //  setUserId(parseInt(storedUserId, 10))
+      if (storedUserId) {
+        userIdRef.current = parseInt(storedUserId, 10);
+        
       }
     }
 
-    const { data, error } = await supabase
-      .from('SupabaseMessages')
-      .select('*')
-      .or(`and(senderId.eq.${userIdRef.current},receiverId.eq.${receiverId}),and(senderId.eq.${receiverId},receiverId.eq.${userIdRef.current})`) 
-      .order('created_at', { ascending: true });
-   console.log(data)
-    if (error){
-        console.log(error)
+    try {
+      const { data, error } = await supabase
+        .from('SupabaseMessages')
+        .select('*')
+        .or(`and(senderId.eq.${userIdRef.current},receiverId.eq.${receiverId}),and(senderId.eq.${receiverId},receiverId.eq.${userIdRef.current})`)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error(error);
+        setFetchError(error.message);
+      } else {
+        setMessages(data || []);
+        // Mark received messages as read
+        markMessagesAsRead(data);
+      }
+    } catch (error: any) {
+      console.error(error);
       setFetchError(error.message);
-    } else {
-        console.log("data")
-      setMessages(data);
+    }
+  };
+
+  const markMessagesAsRead = async (messagesToMarkAsRead: any) => {
+ 
+    const unreadMessages = messagesToMarkAsRead.filter((msg: any) => msg.receiverId === userIdRef.current && !msg.isRead);
+  
+    if (unreadMessages.length > 0) {
+   
+      const messageIds = unreadMessages.map((msg: any) => msg.id);
+  
+  
+      try {
+        await supabase
+          .from('SupabaseMessages')
+          .update({ isRead: true })
+          .in('id', messageIds);
+      } catch (error: any) {
+        console.error('Error marking messages as read:', error.message);
+      }
     }
   };
 
   const handleSubscription = (event: RealtimeEvent) => {
-    // Check if the new message already exists in the messages state
-  const isNewMessageExist = messages.some((msg) => msg.id === event.new.id);
-    // Check if the new message is intended for the current receiver
-    const isMessageForReceiver = (
+    const isNewMessageExist = messages.some((msg) => msg.id === event.new.id);
+    const isMessageForReceiver =
       (event.new.senderId === userIdRef.current && event.new.receiverId === receiverId) ||
-      (event.new.senderId === receiverId && event.new.receiverId === userIdRef.current)
-    );
-  // If the new message doesn't exist, add it to the messages state
-  if (!isNewMessageExist  && isMessageForReceiver) {
-    setMessages((prevMessages) => [...prevMessages, event.new]);
-  }
-  };
+      (event.new.senderId === receiverId && event.new.receiverId === userIdRef.current);
+
   
+   
+    if (!isNewMessageExist && isMessageForReceiver && event.eventType === 'INSERT') {
+      // Insert new message into the state
+      setMessages((prevMessages) => [...prevMessages, event.new]);
+    } else if (isMessageForReceiver && event.eventType === 'UPDATE') {
+      
+      // Update existing message in the state
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) => (msg.id === event.new.id ? { ...msg, isRead: event.new.isRead } : msg))
+       );
+  };
+}
+
   useEffect(() => {
     fetchMessages();
-   const subscription = supabase
-  .channel('RealtimeSubscription')
-  .on('postgres_changes' as any, { event: 'INSERT', schema: 'public', table: 'SupabaseMessages' }, handleSubscription)
-  .subscribe();
-  // Clean up subscription on component unmount
+    const subscription = supabase
+      .channel('RealtimeSubscription')
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'SupabaseMessages' }, handleSubscription)
+      .subscribe();
+
     return () => {
       subscription.unsubscribe();
     };
@@ -77,18 +107,15 @@ const fetchMessages = async () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Check if the message is not empty before inserting
     if (message.trim().length !== 0) {
-      const { error, data } = await supabase
-        .from('SupabaseMessages')
-        .insert([{ senderId: userIdRef.current, receiverId, content: message }]);
-
-      if (error) {
-        console.error('Error sending message:', error.message);
-      } else {
-        // Clear the input field after sending the message
+      try {
+        await supabase
+          .from('SupabaseMessages')
+          .insert([{ senderId: userIdRef.current, receiverId, content: message }]);
         setMessage('');
-     }
+      } catch (error: any) {
+        console.error('Error sending message:', error.message);
+      }
     }
   };
 
@@ -96,18 +123,23 @@ const fetchMessages = async () => {
     <div>
       <div className="page home">
         <div>
-          {/* Display messages */}
           <div>
             {messages.map((msg) => (
-              <div key={msg.id}
-               className={`${msg.senderId === userIdRef.current ? 'text-right' : 'text-left'} w-[15rem]`}
+              <div
+                key={msg.id}
+                className={`${msg.senderId === userIdRef.current ? 'text-right' : 'text-left'} w-[15rem]`}
               >
-                <p>{msg.senderId === userIdRef.current ? `You: ${userIdRef.current} ` : `User ${msg.senderId}: `}{msg.content}</p>
-                </div>
+          <p>
+                  {msg.senderId === userIdRef.current
+                    ? `You: ${userIdRef.current} ${msg.isRead ? '(Read)' : '(Unread)'}`
+                    : `User ${msg.senderId}: ` }
+                  {msg.content}
+                  
+                </p>
+              </div>
             ))}
           </div>
 
-          {/* Input field for message */}
           <form onSubmit={handleSubmit}>
             <input
               className="border-2"
@@ -116,7 +148,6 @@ const fetchMessages = async () => {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
             />
-            {/* Button to trigger message insertion */}
             <button type="submit" className="bg-black text-white">
               Send Message
             </button>
@@ -126,6 +157,4 @@ const fetchMessages = async () => {
     </div>
   );
 };
-
 export default ChatPage;
-
