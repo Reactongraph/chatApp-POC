@@ -5,23 +5,26 @@ import supabase from '../../../config/supabaseClient';
 interface RealtimeEvent {
   table: string;
   type: string;
-  new: any; // Adjust the type based on the actual structure of the 'new' property
+  new: any;
 }
 
 interface ChatPageProps {
   params: {
     id: string;
+  
   };
 }
 
 const ChatPage: React.FC<ChatPageProps> = ({ params }) => {
+  console.log(params)
   const receiverId = parseInt(params.id);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [message, setMessage] = useState('');
   const userIdRef = useRef<number | null>(null);
 
-  const fetchMessages = async () => {
+
+const fetchMessages = async () => {
     if (typeof window !== 'undefined' && window.localStorage) {
       let storedUserId = localStorage.getItem('senderId');
 
@@ -77,7 +80,12 @@ const ChatPage: React.FC<ChatPageProps> = ({ params }) => {
     const isMessageForReceiver =
       (event.new.senderId === userIdRef.current && event.new.receiverId === receiverId) ||
       (event.new.senderId === receiverId && event.new.receiverId === userIdRef.current);
-
+    
+      const newMessage = [event.new];
+     
+      if(event.new.senderId === receiverId){
+         markMessagesAsRead(newMessage)
+      }
   
    
     if (!isNewMessageExist && isMessageForReceiver && event.eventType === 'INSERT') {

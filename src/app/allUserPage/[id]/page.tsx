@@ -1,17 +1,26 @@
 "use client"
-import supabase from '../../config/supabaseClient'
+import supabase from '../../../config/supabaseClient'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-const Page = () => {
+interface allUserPageProps {
+  params: {
+    id: string;
+  
+  };
+}
+const Page:React.FC<allUserPageProps>= ({ params }) => {
 
   const router = useRouter();
   const [fetchError, setFetchError] =  useState<string | null>(null);
   const [users, setUsers] = useState<any[] | null>(null);
-  const [userId, setUserId] = useState<string>(''); // State to store the user ID input
+  // const [userId, setUserId] = useState<string>(''); // State to store the user ID input
+  const userId = parseInt(params.id);
+  
 
   const fetchUsers = async () => {
     try {
+      
       const { data, error } = await supabase
         .from('Supabase')
         .select()
