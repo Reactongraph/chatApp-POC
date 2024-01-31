@@ -1,7 +1,7 @@
 "use client"
-import supabase from '../../../config/supabaseClient'
+import supabase from '../../config/supabaseClient'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 interface allUserPageProps {
   params: {
@@ -14,9 +14,17 @@ const Page:React.FC<allUserPageProps>= ({ params }) => {
   const router = useRouter();
   const [fetchError, setFetchError] =  useState<string | null>(null);
   const [users, setUsers] = useState<any[] | null>(null);
+  const userIdRef = useRef<number | null>(null);
   
-  const userId = parseInt(params.id);
-  
+  // const userId = parseInt(params.id);
+  if (typeof window !== 'undefined' && window.localStorage) {
+    let storedUserId = localStorage.getItem('senderId');
+
+    if (storedUserId) {
+      userIdRef.current = parseInt(storedUserId, 10);
+      
+    }
+  }
 
   const fetchUsers = async () => {
     
@@ -26,7 +34,7 @@ const Page:React.FC<allUserPageProps>= ({ params }) => {
     const { data: userExistsData, error: userExistsError } = await supabase
       .from('Supabase')
       .select('id')
-      .eq('id', userId);
+      .eq('id', userIdRef.current);
       
     if (userExistsError) {
       console.log("user is not exist with id")
@@ -42,7 +50,7 @@ const Page:React.FC<allUserPageProps>= ({ params }) => {
       const { data, error } = await supabase
         .from('Supabase')
         .select()
-        .neq('id', userId) // Assuming 'id' is the column name for user IDs
+        .neq('id', userIdRef.current) // Assuming 'id' is the column name for user IDs
       if (error) {
         setFetchError('Could not fetch the users')
         setUsers(null)

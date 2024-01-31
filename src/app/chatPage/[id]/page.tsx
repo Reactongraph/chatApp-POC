@@ -16,7 +16,6 @@ interface ChatPageProps {
 }
 
 const ChatPage: React.FC<ChatPageProps> = ({ params }) => {
-  console.log(params)
   const receiverId = parseInt(params.id);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [messages, setMessages] = useState<any[]>([]);

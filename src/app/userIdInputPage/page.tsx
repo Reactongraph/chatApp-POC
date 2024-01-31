@@ -16,7 +16,7 @@ const page = () => {
   const handleSubmit = () => {
      if(userId !== ""){
       localStorage.setItem("senderId", userId.toString());
-    router.push(`allUserPage/${userId}`)
+    router.push(`/allUserPage`)
     }
   }
  
@@ -31,10 +31,7 @@ return (
          
           <button onClick={handleSubmit} className='bg-black w-20 rounded-[4px] text-white'>Submit</button>
         </div>
-       
-        
-        
- </div>
+      </div>
     </div>
   )
 }
